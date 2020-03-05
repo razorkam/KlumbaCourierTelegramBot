@@ -1,2 +1,3 @@
 # chars, not bytes?
-TG_MESSAGE_SIZE_LIMIT = 4096
+TG_MESSAGE_SIZE_LIMIT = 800
+TG_PERMANENT_ERRORS_SNIPPETS = ['specified new message content and reply markup are exactly the same as a current content and reply markup of the message']

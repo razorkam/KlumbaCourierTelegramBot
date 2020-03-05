@@ -5,6 +5,7 @@ from datetime import date
 
 from .BitrixFieldsAliases import *
 from .CbqData import *
+from . import Utils
 
 
 class BitrixWorker:
@@ -24,7 +25,7 @@ class BitrixWorker:
                                             DEAL_COMMENT_ALIAS, DEAL_RECIPIENT_NAME_ALIAS,
                                             DEAL_RECIPIENT_SURNAME_ALIAS, DEAL_RECIPIENT_PHONE_ALIAS,
                                             DEAL_ADDRESS_ALIAS, DEAL_SUM_ALIAS, DEAL_INCOGNITO_ALIAS, DEAL_FLAT_ALIAS,
-                                            DEAL_CONTACT_ID_ALIAS],
+                                            DEAL_CONTACT_ID_ALIAS, DEAL_RESPONSIBLE_ID_ALIAS],
                                  'order': {DEAL_TIME_ALIAS: 'ASC'}}
 
     def _send_request(self, user, method, params=None, custom_error_text='', notify_user=True):
@@ -56,7 +57,7 @@ class BitrixWorker:
 
         if notify_user:
             self.TgWorker.edit_user_wm(user, {'text': TextSnippets.ERROR_BITRIX_REQUEST,
-                                          'reply_markup': TO_DEALS_CALLBACK_DATA})
+                                              'reply_markup': TO_DEALS_BUTTON_OBJ})
         raise Exception()
 
     def get_deals_list(self, user):
@@ -126,6 +127,25 @@ class BitrixWorker:
                 data = res['result']
                 if data[CONTACT_HAS_PHONE_ALIAS] == CONTACT_HAS_PHONE_TRUE:
                     return data[CONTACT_PHONELIST_ALIAS][0]['VALUE']
+
+            return TextSnippets.FIELD_IS_EMPTY_PLACEHOLDER
+
+        except Exception as e:
+            return TextSnippets.FIELD_IS_EMPTY_PLACEHOLDER
+
+    # name + last_name
+    def get_user_name(self, user, bitrix_user_id):
+        if not bitrix_user_id:
+            return TextSnippets.FIELD_IS_EMPTY_PLACEHOLDER
+
+        try:
+            res = self._send_request(user, 'user.get',
+                                     {'id': bitrix_user_id}, notify_user=False)
+
+            if 'result' in res:
+                data = res['result'][0]
+                return Utils.prepare_external_field(data, USER_NAME_ALIAS) + ' ' + \
+                       Utils.prepare_external_field(data, USER_LAST_NAME_ALIAS)
 
             return TextSnippets.FIELD_IS_EMPTY_PLACEHOLDER
 

@@ -7,18 +7,16 @@ class UserState(Enum):
 
 
 class User:
-    _DEALS_PER_PAGE = 3
-    _total_deals = 0
-    _deals = None
-    _working_message_id = None
-    preauthorize_msg_list = []
-    _deal_cur_ptr = None
-    _deal_prev_ptr = None
 
     def __init__(self):
         self._phone_number = None
         self._state = UserState.PHONE_NUMBER_REQUESTED
         self._chat_id = None
+        self.deal_page_borders = []
+        self.cur_page_index = 0
+        self.preauthorize_msg_list = []
+        self._working_message_id = None
+        self._deals = None
 
     # pickle serializing fields
     def __getstate__(self):
@@ -26,6 +24,16 @@ class User:
 
     def __setstate__(self, dump):
         self._chat_id, self._state, self._phone_number, self._working_message_id = dump
+        self.deal_page_borders = []
+        self.preauthorize_msg_list = []
+        self._deals = None
+        self.cur_page_index = 0
+
+    def get_deal_pages_num(self):
+        return len(self.deal_page_borders) - 1
+
+    def get_deals_num(self):
+        return len(self._deals)
 
     # add pre-auth message to delete later
     def add_prauth_message(self, message_id):
@@ -63,18 +71,23 @@ class User:
     def get_deals(self):
         return self._deals
 
-    def get_total_deals_num(self):
-        return self._total_deals
-
     def set_deals(self, deals):
         self._deals = deals
-        self._total_deals = len(deals)
 
     def get_cur_deals(self):
         if self._deals is None:
             return {}
 
         return self.get_deals()
+
+    def get_cur_deals_page(self):
+        if self._deals is None:
+            return {}
+
+        left_border_index = self.deal_page_borders[self.cur_page_index]
+        right_border_index = self.deal_page_borders[self.cur_page_index + 1]
+
+        return self._deals[left_border_index:right_border_index]
 
     def get_wm_id(self):
         return self._working_message_id

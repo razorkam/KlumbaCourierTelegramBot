@@ -35,6 +35,7 @@ ERROR_HANDLING_DEAL_ACTION = 'Произошла ошибка при смене 
                              'Попробуйте снова или подождите некоторое время.'
 
 DEAL_HEADER = '_Назначенных заказов: %s._\n\n'
+DEAL_PAGE_FOOTER = '_Страница_ {} из {}\n\n'
 
 ADDRESS_RESOLUTION_LINK = 'https://maps.yandex.ru/?text='
 
@@ -47,6 +48,7 @@ DEAL_PREVIEW_TEMPLATE = \
                 '*Квартира:* {} \n' \
                 '*Телефон получателя:* [{}](tel:{}) \n' \
                 '*К оплате:* {} \n' \
+                '*Ответственный:* {} \n' \
                 '*ЗАКАЗ ДОСТАВЛЕН:* {}'
 
 
@@ -62,6 +64,7 @@ DEAL_TEMPLATE = \
                 '*Телефон получателя:* [{}](tel:{}) \n' \
                 '*Адрес получателя:* [{}]({}) \n' \
                 '*К оплате:* {} \n' \
+                '*Ответственный:* {} \n' \
                 '*ЗАКАЗ ДОСТАВЛЕН:* {}'
 
 DEAL_ACTION_NAME_OPEN = 'Переоткрыть'
@@ -90,6 +93,9 @@ REFRESH_DEALS_BUTTON_TEXT = 'Обновить список'
 DEAL_CLOSING_DIALOG_TEXT = 'Подтвердить доставку заказа {}?'
 DEAL_CLOSING_DIALOG_YES = 'Да'
 DEAL_CLOSING_DIALOG_NO = 'Отмена'
+
+DEALS_PAGE_NEXT_BUTTON_TEXT = 'Вперед'
+DEALS_PAGE_PREV_BUTTON_TEXT = 'Назад'
 
 
 

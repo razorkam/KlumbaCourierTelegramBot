@@ -30,6 +30,14 @@ class TgWorker:
     def __init__(self):
         self.CommandsHandler = TelegramCommandsHandler(self)
 
+    # no need to do multiple attempts for this kind of errors
+    def is_error_permanent(self, error_text):
+        for s in TG_PERMANENT_ERRORS_SNIPPETS:
+            if s in error_text:
+                return True
+
+        return False
+
     def send_request(self, method, params, custom_error_text=''):
 
         for a in range(self.REQUESTS_MAX_ATTEMPTS):
@@ -45,9 +53,16 @@ class TgWorker:
                     else:
                         logging.error('TG bad response %s : Attempt: %s, Called: %s : Request params: %s',
                                       a, json, custom_error_text, params)
+
+                        if self.is_error_permanent(json['description']):
+                            return {}
                 else:
                     logging.error('TG response failed%s : Attempt: %s, Called: %s : Request params: %s',
                                   a, response.text, custom_error_text, params)
+
+                    if self.is_error_permanent(response.json()['description']):
+                        return {}
+
             except Exception as e:
                 logging.error('Sending TG api request %s', e)
 

@@ -3,6 +3,7 @@ from .BitrixFieldsAliases import *
 from .CbqData import *
 from . import Utils, Commands
 from .Deal import Deal
+from .MiscConstants import *
 import copy
 
 
@@ -32,7 +33,7 @@ class TelegramCommandsHandler:
                                                               deal.recipient_name, deal.recipient_surname,
                                                               deal.recipient_phone, deal.recipient_phone,
                                                               deal.address, address_res_link, deal.sum,
-                                                              deal.close_command)}
+                                                              deal.responsible_name, deal.close_command)}
 
         self.TgWorker.edit_user_wm(user, view_obj)
 
@@ -76,19 +77,22 @@ class TelegramCommandsHandler:
 
         if not deals or ('result' not in deals):
             msg_obj = {'text': TextSnippets.YOU_HAVE_NO_DEALS,
-                                                  'reply_markup': REFRESH_DEALS_BUTTON_OBJ}
+                       'reply_markup': REFRESH_DEALS_BUTTON_OBJ}
+
             if user.get_wm_id() is None:
                 return self.TgWorker.send_message(user.get_chat_id(), msg_obj)
             else:
-                self.TgWorker.edit_user_wm(user, msg_obj, from_callback=is_callback)
+                return self.TgWorker.edit_user_wm(user, msg_obj, from_callback=is_callback)
 
-        deals_msg = self._generate_deals_preview_msg(deals, user)
+        deals_msg = self._generate_deals_preview_data(deals, user)
+
+        user.cur_page_index = 0
 
         # in case of no main menu, send deals list first time
         if user.get_wm_id() is None:
             return self.TgWorker.send_message(user.get_chat_id(), deals_msg)
         else:
-            self.TgWorker.edit_user_wm(user, deals_msg, from_callback=is_callback)
+            return self.TgWorker.edit_user_wm(user, deals_msg, from_callback=is_callback)
 
     def handle_command(self, message):
         user_id = message['from']['id']
@@ -136,11 +140,19 @@ class TelegramCommandsHandler:
 
         self.TgWorker.delete_message(chat_id, message['message_id'])
 
-    def _generate_deals_preview_msg(self, deals, user):
+    def _generate_deals_preview_data(self, deals, user):
         deals_msg = {'text': TextSnippets.DEAL_HEADER % (len(deals['result'])),
-                     'reply_markup': REFRESH_DEALS_BUTTON_OBJ}
+                     'reply_markup': {}}
 
         deals_lst = []
+
+        msg_size = len(deals_msg['text'])
+        header_size = msg_size
+
+        # begin, past-to-end
+        user.deal_page_borders = [0, 0]
+        user.cur_page_index = 0
+        first_page_formed = False
 
         for d in deals['result']:
             deal_id = Utils.prepare_external_field(d, DEAL_ID_ALIAS)
@@ -165,12 +177,30 @@ class TelegramCommandsHandler:
 
             address_res_link = TextSnippets.ADDRESS_RESOLUTION_LINK + address
 
-            deals_msg['text'] += (TextSnippets.DEAL_PREVIEW_TEMPLATE.format(deal_view_command,
-                                                                            time, comment,
-                                                                            incognito, address, address_res_link,
-                                                                            flat, recipient_phone, recipient_phone, sum,
-                                                                            deal_close_command)
-                                  + '\n\n' + TextSnippets.DEAL_DELIMETER + '\n\n')
+            responsible_id = Utils.get_field(d, DEAL_RESPONSIBLE_ID_ALIAS)
+            responsible_name = self.BitrixWorker.get_user_name(user, responsible_id)
+
+            deal_representation = (TextSnippets.DEAL_PREVIEW_TEMPLATE.format(deal_view_command,
+                                                                             time, comment,
+                                                                             incognito, address, address_res_link,
+                                                                             flat, recipient_phone, recipient_phone,
+                                                                             sum,
+                                                                             responsible_name, deal_close_command)
+                                   + '\n\n' + TextSnippets.DEAL_DELIMETER + '\n\n')
+
+            cur_deal_len = len(deal_representation)
+            msg_size += cur_deal_len
+
+            if msg_size >= TG_MESSAGE_SIZE_LIMIT:
+                first_page_formed = True
+                last_elt = user.deal_page_borders[-1]
+                user.deal_page_borders.append(last_elt + 1)
+                msg_size = header_size + cur_deal_len
+            else:
+                user.deal_page_borders[-1] += 1
+
+            if not first_page_formed:
+                deals_msg['text'] += deal_representation
 
             deal_obj = Deal()
             deal_obj.id = deal_id
@@ -178,6 +208,7 @@ class TelegramCommandsHandler:
             deal_obj.comment = comment
             deal_obj.incognito = incognito
             deal_obj.address = address
+            deal_obj.address_res_link = address_res_link
             deal_obj.flat = flat
             deal_obj.recipient_phone = recipient_phone
             deal_obj.sum = sum
@@ -187,42 +218,73 @@ class TelegramCommandsHandler:
             deal_obj.recipient_surname = recipient_surname
             deal_obj.customer_phone = customer_phone
             deal_obj.close_command = deal_close_command
+            deal_obj.view_command = deal_view_command
             deal_obj.address = address
             deal_obj.location = location
+            deal_obj.responsible_name = responsible_name
 
             deals_lst.append(deal_obj)
+
+        pages_num = user.get_deal_pages_num()
+
+        if pages_num > 1:
+            deals_msg['text'] += TextSnippets.DEAL_PAGE_FOOTER.format(user.cur_page_index+1, pages_num)
+
+        if pages_num < 2:
+            deals_msg['reply_markup'] = REFRESH_DEALS_BUTTON_OBJ
+        else:
+            deals_msg['reply_markup'] = TO_NEXT_DEALS_BUTTON_OBJ
 
         user.set_deals(deals_lst)
         return deals_msg
 
-    def handle_deals_pages_cb(self, cbq, cb_data):
-        user = self.TgWorker.USERS.get_user(cbq['from']['id'])
+    def render_cur_deals_page(self, user):
+        page_deals = user.get_cur_deals_page()
+        deals_msg = {'text': TextSnippets.DEAL_HEADER % (user.get_deals_num()),
+                     'reply_markup': {}}
+
+        for d in page_deals:
+            deal_representation = (TextSnippets.DEAL_PREVIEW_TEMPLATE.format(d.view_command,
+                                                                             d.time, d.comment,
+                                                                             d.incognito, d.address, d.address_res_link,
+                                                                             d.flat, d.recipient_phone,
+                                                                             d.recipient_phone,
+                                                                             d.sum,
+                                                                             d.responsible_name, d.close_command)
+                                   + '\n\n' + TextSnippets.DEAL_DELIMETER + '\n\n')
+
+            deals_msg['text'] += deal_representation
+
+        pages_num = user.get_deal_pages_num()
+
+        if pages_num > 1:
+            deals_msg['text'] += TextSnippets.DEAL_PAGE_FOOTER.format(user.cur_page_index+1, pages_num)
+
+        if user.cur_page_index is 0:
+            deals_msg['reply_markup'] = TO_NEXT_DEALS_BUTTON_OBJ
+        elif user.cur_page_index is pages_num - 1:
+            deals_msg['reply_markup'] = TO_PREV_DEALS_BUTTON_OBJ
+        else:
+            deals_msg['reply_markup'] = TO_BOTH_DEALS_BUTTON_OBJ
+
+        # in case of no main menu, send deals list first time
+        if user.get_wm_id() is None:
+            return self.TgWorker.send_message(user.get_chat_id(), deals_msg)
+        else:
+            return self.TgWorker.edit_user_wm(user, deals_msg)
+
+    def handle_deals_pages_cb(self, cbq, user, cb_data):
         cbq_id = cbq['id']
-        message = cbq['message']
-        message_id = message['message_id']
 
-        if message_id != user.get_cur_deals_message_id():
-            self.TgWorker.answer_cbq(cbq_id, TextSnippets.CBQ_DEALS_WRONG_MESSAGE
-                                     % Commands.GET_DEALS_LIST, True)
-            return
-
-        if cb_data == DEALS_BUTTON_NEXT_DATA:
-            deals_page = user.get_next_deals()
-        elif cb_data == DEALS_BUTTON_PREV_DATA:
-            deals_page = user.get_prev_deals()
+        if cb_data == DEALS_BUTTON_NEXT_DATA and user.cur_page_index + 1 < user.get_deal_pages_num():
+            user.cur_page_index += 1
+        elif cb_data == DEALS_BUTTON_PREV_DATA and user.cur_page_index > 0:
+            user.cur_page_index -= 1
         else:
             self.TgWorker.answer_cbq(cbq_id, TextSnippets.CBQ_UNKNOW_COMMAND, True)
             raise Exception('Handling cb query: unknown cb data %s' % cb_data)
 
-        # page <0 or > total - 1
-        if not deals_page:
-            return
-
-        deals_msg = self._generate_deals_preview_msg(deals_page, user)
-
-        chat_id = message['chat']['id']
-
-        self.TgWorker.edit_message(chat_id, message_id, deals_msg)
+        self.render_cur_deals_page(user)
         self.TgWorker.answer_cbq(cbq_id)
 
     def handle_main_menu_cb(self, cbq, user):
@@ -255,6 +317,8 @@ class TelegramCommandsHandler:
             self.handle_to_deals_cb(cbq, user)
         elif cb_command == CLOSE_DEAL_CALLBACK_PREFIX:
             self.handle_close_deal_cb(cbq, user, cb_data)
+        elif cb_command == DEALS_CALLBACK_PREFIX:
+            self.handle_deals_pages_cb(cbq, user, cb_data)
         else:
             self.TgWorker.answer_cbq(cbq['id'], TextSnippets.CBQ_UNKNOW_COMMAND, True)
             raise Exception('Handling cb query: unknown cb command %s' % cb_command)

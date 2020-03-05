@@ -8,7 +8,7 @@ Restart=always
 RestartSec=1
 User=root
 WorkingDirectory=/root/klumba_courier_bot
-ExecStart=python3 /root/klumba_courier_bot/main.py
+ExecStart=/usr/bin/env python3 /root/klumba_courier_bot/main.py
 
 [Install]
 WantedBy=multi-user.target
