@@ -18,6 +18,7 @@ class TgWorker:
     REQUESTS_MAX_ATTEMPTS = 5
     GLOBAL_LOOP_ERROR_TIMEOUT = 60  # seconds
     SESSION = requests.session()
+    PROXIES = [creds.HTTPS_PROXY_GERMANY, creds.HTTPS_PROXY_FINLAND]
     CommandsHandler = None
 
     REQUEST_PHONE_PARAMS = {'text': TextSnippets.REQUEST_PHONE_NUMBER_MESSAGE,
@@ -39,10 +40,11 @@ class TgWorker:
         return False
 
     def send_request(self, method, params, custom_error_text=''):
+        proxy_index = 0
 
         for a in range(self.REQUESTS_MAX_ATTEMPTS):
             try:
-                response = self.SESSION.post(url=creds.TG_API_URL + method, proxies=creds.HTTPS_PROXY,
+                response = self.SESSION.post(url=creds.TG_API_URL + method, proxies=self.PROXIES[proxy_index],
                                              json=params, timeout=self.REQUESTS_TIMEOUT)
 
                 if response:
@@ -62,6 +64,15 @@ class TgWorker:
 
                     if self.is_error_permanent(response.json()['description']):
                         return {}
+
+            except requests.exceptions.ProxyError:
+                logging.error('Proxy #{} got connection error.'.format(proxy_index))
+
+                if proxy_index < (len(self.PROXIES) - 1):
+                    proxy_index += 1
+                    logging.info('Trying proxy #{}'.format(proxy_index))
+                else:
+                    logging.error('All proxies got connection problems. Request failed')
 
             except Exception as e:
                 logging.error('Sending TG api request %s', e)
