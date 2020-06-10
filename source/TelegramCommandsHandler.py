@@ -160,7 +160,7 @@ class TelegramCommandsHandler:
             comment = Utils.prepare_external_field(d, DEAL_COMMENT_ALIAS)
             incognito = Utils.prepare_deal_incognito(d, DEAL_INCOGNITO_ALIAS)
             flat = Utils.prepare_external_field(d, DEAL_FLAT_ALIAS)
-            recipient_phone = Utils.prepare_external_field(d, DEAL_RECIPIENT_PHONE_ALIAS)
+            recipient_phone = Utils.prepare_phone_number(Utils.prepare_external_field(d, DEAL_RECIPIENT_PHONE_ALIAS))
             sum = Utils.prepare_external_field(d, DEAL_SUM_ALIAS)
             date = Utils.prepare_deal_date(d, DEAL_DATE_ALIAS)
             order = Utils.prepare_external_field(d, DEAL_ORDER_ALIAS)
@@ -168,7 +168,7 @@ class TelegramCommandsHandler:
             recipient_surname = Utils.prepare_external_field(d, DEAL_RECIPIENT_SURNAME_ALIAS)
 
             contact_id = Utils.get_field(d, DEAL_CONTACT_ID_ALIAS)
-            customer_phone = self.BitrixWorker.get_contact_phone(user, contact_id)
+            customer_phone = Utils.prepare_phone_number(self.BitrixWorker.get_contact_phone(user, contact_id))
 
             address, location = Utils.prepare_deal_address(d, DEAL_ADDRESS_ALIAS)
 

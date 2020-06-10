@@ -7,6 +7,7 @@ DEAL_VIEW_COMMAND_PATTERN = re.compile(Commands.DEAL_VIEW_PREFIX + TextSnippets.
 BITRIX_ADDRESS_PATTERN = re.compile('(.+)\\|(\\d+\\.\\d+;\\d+\\.\\d+)')
 BITRIX_DATE_PATTERN = re.compile('(\\d{4})-(\\d{2})-(\\d{2}).*')
 ADDRESS_LINK_RESOLVING_SPECIAL_CHARS_PATTERN = re.compile('["]')
+PHONE_VALID_SYMBOLS_LIST_PATTERN = re.compile('[^\\d,+]')
 
 
 def get_field(obj, key):
@@ -16,8 +17,14 @@ def get_field(obj, key):
         return None
 
 
+# remove all except digits to properly display in Tg clients
+def prepare_phone_number(phone):
+    return re.sub(PHONE_VALID_SYMBOLS_LIST_PATTERN, '', phone)
+
+
 def escape_markdown_special_chars(str):
     return re.sub(MD_ESCAPE_PATTERN, r'\\\g<1>', str)
+
 
 def _stringify_field(field):
     if field in (False, None, {}, []):
