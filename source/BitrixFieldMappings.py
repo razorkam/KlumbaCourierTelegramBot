@@ -23,5 +23,5 @@ DEAL_TIME_MAPPING = {
 
 DEAL_INCOGNITO_MAPPING = {
    '0': 'нет',
-   '1': 'да'
+   '1': 'ВНИМАНИЕ - ДА!'
 }
