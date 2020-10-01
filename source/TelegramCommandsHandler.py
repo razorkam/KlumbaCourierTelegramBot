@@ -29,12 +29,12 @@ class TelegramCommandsHandler:
 
         view_obj = {'reply_markup': TO_DEALS_BUTTON_OBJ,
                     'text': TextSnippets.DEAL_TEMPLATE.format(deal.id, deal.order, deal.date, deal.time, deal.comment,
+                                                              deal.order_comment, deal.delivery_comment,
                                                               deal.customer_phone, deal.customer_phone,
                                                               deal.recipient_name, deal.recipient_surname,
                                                               deal.recipient_phone, deal.recipient_phone,
                                                               deal.address, address_res_link, deal.sum,
                                                               deal.responsible_name,
-                                                              deal.order_comment, deal.delivery_comment,
                                                               deal.close_command)}
 
         self.TgWorker.edit_user_wm(user, view_obj)
@@ -186,11 +186,11 @@ class TelegramCommandsHandler:
 
             deal_representation = (TextSnippets.DEAL_PREVIEW_TEMPLATE.format(deal_view_command,
                                                                              time, comment,
+                                                                             order_comment, delivery_comment,
                                                                              incognito, address, address_res_link,
                                                                              flat, recipient_phone, recipient_phone,
                                                                              sum,
                                                                              responsible_name,
-                                                                             order_comment, delivery_comment,
                                                                              deal_close_command)
                                    + '\n\n' + TextSnippets.DEAL_DELIMETER + '\n\n')
 
@@ -254,12 +254,12 @@ class TelegramCommandsHandler:
         for d in page_deals:
             deal_representation = (TextSnippets.DEAL_PREVIEW_TEMPLATE.format(d.view_command,
                                                                              d.time, d.comment,
+                                                                             d.order_comment, d.delivery_comment,
                                                                              d.incognito, d.address, d.address_res_link,
                                                                              d.flat, d.recipient_phone,
                                                                              d.recipient_phone,
                                                                              d.sum,
                                                                              d.responsible_name,
-                                                                             d.order_comment, d.delivery_comment,
                                                                              d.close_command)
                                    + '\n\n' + TextSnippets.DEAL_DELIMETER + '\n\n')
 
