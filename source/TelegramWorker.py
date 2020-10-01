@@ -18,7 +18,7 @@ class TgWorker:
     REQUESTS_MAX_ATTEMPTS = 5
     GLOBAL_LOOP_ERROR_TIMEOUT = 60  # seconds
     SESSION = requests.session()
-    PROXIES = [creds.HTTPS_PROXY_GERMANY, creds.HTTPS_PROXY_FINLAND]
+    PROXIES = [creds.HTTPS_PROXY_1, creds.HTTPS_PROXY_2]
     CommandsHandler = None
 
     REQUEST_PHONE_PARAMS = {'text': TextSnippets.REQUEST_PHONE_NUMBER_MESSAGE,
