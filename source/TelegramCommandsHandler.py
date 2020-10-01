@@ -33,7 +33,9 @@ class TelegramCommandsHandler:
                                                               deal.recipient_name, deal.recipient_surname,
                                                               deal.recipient_phone, deal.recipient_phone,
                                                               deal.address, address_res_link, deal.sum,
-                                                              deal.responsible_name, deal.close_command)}
+                                                              deal.responsible_name,
+                                                              deal.order_comment, deal.delivery_comment,
+                                                              deal.close_command)}
 
         self.TgWorker.edit_user_wm(user, view_obj)
 
@@ -158,6 +160,8 @@ class TelegramCommandsHandler:
             deal_id = Utils.prepare_external_field(d, DEAL_ID_ALIAS)
             time = Utils.prepare_deal_time(d, DEAL_TIME_ALIAS)
             comment = Utils.prepare_external_field(d, DEAL_COMMENT_ALIAS)
+            order_comment = Utils.prepare_external_field(d, DEAL_ORDER_COMMENT_ALIAS)
+            delivery_comment = Utils.prepare_external_field(d, DEAL_DELIVERY_COMMENT_ALIAS)
             incognito = Utils.prepare_deal_incognito(d, DEAL_INCOGNITO_ALIAS)
             flat = Utils.prepare_external_field(d, DEAL_FLAT_ALIAS)
             recipient_phone = Utils.prepare_phone_number(Utils.prepare_external_field(d, DEAL_RECIPIENT_PHONE_ALIAS))
@@ -185,7 +189,9 @@ class TelegramCommandsHandler:
                                                                              incognito, address, address_res_link,
                                                                              flat, recipient_phone, recipient_phone,
                                                                              sum,
-                                                                             responsible_name, deal_close_command)
+                                                                             responsible_name,
+                                                                             order_comment, delivery_comment,
+                                                                             deal_close_command)
                                    + '\n\n' + TextSnippets.DEAL_DELIMETER + '\n\n')
 
             cur_deal_len = len(deal_representation)
@@ -206,6 +212,8 @@ class TelegramCommandsHandler:
             deal_obj.id = deal_id
             deal_obj.time = time
             deal_obj.comment = comment
+            deal_obj.order_comment = order_comment
+            deal_obj.delivery_comment = delivery_comment
             deal_obj.incognito = incognito
             deal_obj.address = address
             deal_obj.address_res_link = address_res_link
@@ -250,7 +258,9 @@ class TelegramCommandsHandler:
                                                                              d.flat, d.recipient_phone,
                                                                              d.recipient_phone,
                                                                              d.sum,
-                                                                             d.responsible_name, d.close_command)
+                                                                             d.responsible_name,
+                                                                             d.order_comment, d.delivery_comment,
+                                                                             d.close_command)
                                    + '\n\n' + TextSnippets.DEAL_DELIMETER + '\n\n')
 
             deals_msg['text'] += deal_representation

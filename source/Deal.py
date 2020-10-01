@@ -5,6 +5,8 @@ class Deal:
     date = None
     time = None
     comment = None
+    order_comment = None
+    delivery_comment = None
     incognito = None
     customer_phone = None
     address = None
