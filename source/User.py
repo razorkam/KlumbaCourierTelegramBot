@@ -6,8 +6,12 @@ class UserState(Enum):
     AUTHORIZED = 2
 
 
-class User:
+class DealsCategory(Enum):
+    DEALS_IN_DELIVERY = 1
+    DEALS_WAITING = 2
 
+
+class User:
     def __init__(self):
         self._phone_number = None
         self._state = UserState.PHONE_NUMBER_REQUESTED
@@ -17,6 +21,7 @@ class User:
         self.preauthorize_msg_list = []
         self._working_message_id = None
         self._deals = None
+        self._deals_category = DealsCategory.DEALS_IN_DELIVERY
 
     # pickle serializing fields
     def __getstate__(self):
@@ -28,6 +33,7 @@ class User:
         self.preauthorize_msg_list = []
         self._deals = None
         self.cur_page_index = 0
+        self._deals_category = DealsCategory.DEALS_IN_DELIVERY
 
     def get_deal_pages_num(self):
         return len(self.deal_page_borders) - 1
@@ -94,3 +100,10 @@ class User:
 
     def set_wm_id(self, wm_id):
         self._working_message_id = wm_id
+
+    def get_deals_category(self):
+        return self._deals_category
+
+    def set_deals_category(self, dc):
+        self._deals_category = dc
+

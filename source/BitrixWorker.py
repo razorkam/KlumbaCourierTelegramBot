@@ -6,6 +6,7 @@ from datetime import date
 from .BitrixFieldsAliases import *
 from .CbqData import *
 from . import Utils
+from .User import *
 
 
 class BitrixWorker:
@@ -13,30 +14,26 @@ class BitrixWorker:
     REQUESTS_TIMEOUT = 10
     REQUESTS_MAX_ATTEMPTS = 3
 
-    TgWorker = None
-    get_deals_params = None
+    get_deals_params = {'filter': {DEAL_COURIER_FIELD_ALIAS: None,
+                                   DEAL_STAGE_ALIAS: None,
+                                   DEAL_DATE_ALIAS: None},
+                        'select': [DEAL_ID_ALIAS, DEAL_ORDER_ALIAS, DEAL_DATE_ALIAS, DEAL_TIME_ALIAS,
+                                   DEAL_COMMENT_ALIAS, DEAL_RECIPIENT_NAME_ALIAS,
+                                   DEAL_RECIPIENT_SURNAME_ALIAS, DEAL_RECIPIENT_PHONE_ALIAS,
+                                   DEAL_ADDRESS_ALIAS, DEAL_SUM_ALIAS, DEAL_INCOGNITO_ALIAS, DEAL_FLAT_ALIAS,
+                                   DEAL_CONTACT_ID_ALIAS, DEAL_RESPONSIBLE_ID_ALIAS, DEAL_ORDER_COMMENT_ALIAS,
+                                   DEAL_DELIVERY_COMMENT_ALIAS],
+                        'order': {DEAL_TIME_ALIAS: 'ASC'}}
 
-    def __init__(self, TGWorker):
-        self.TgWorker = TGWorker
-        self.get_deals_params = {'filter': {DEAL_COURIER_FIELD_ALIAS: None,
-                                            DEAL_STAGE_ALIAS: [DEAL_OPEN_STATUS_ID],
-                                            DEAL_DATE_ALIAS: None},
-                                 'select': [DEAL_ID_ALIAS, DEAL_ORDER_ALIAS, DEAL_DATE_ALIAS, DEAL_TIME_ALIAS,
-                                            DEAL_COMMENT_ALIAS, DEAL_RECIPIENT_NAME_ALIAS,
-                                            DEAL_RECIPIENT_SURNAME_ALIAS, DEAL_RECIPIENT_PHONE_ALIAS,
-                                            DEAL_ADDRESS_ALIAS, DEAL_SUM_ALIAS, DEAL_INCOGNITO_ALIAS, DEAL_FLAT_ALIAS,
-                                            DEAL_CONTACT_ID_ALIAS, DEAL_RESPONSIBLE_ID_ALIAS, DEAL_ORDER_COMMENT_ALIAS,
-                                            DEAL_DELIVERY_COMMENT_ALIAS],
-                                 'order': {DEAL_TIME_ALIAS: 'ASC'}}
-
-    def _send_request(self, user, method, params=None, custom_error_text='', notify_user=True):
+    @staticmethod
+    def _send_request(user, method, params=None, custom_error_text='', notify_user=True):
         if params is None:
             params = {}
 
-        for a in range(self.REQUESTS_MAX_ATTEMPTS):
+        for a in range(BitrixWorker.REQUESTS_MAX_ATTEMPTS):
             try:
-                response = self.SESSION.post(url=creds.BITRIX_API_URL + method,
-                                             json=params, timeout=self.REQUESTS_TIMEOUT)
+                response = BitrixWorker.SESSION.post(url=creds.BITRIX_API_URL + method,
+                                                     json=params, timeout=BitrixWorker.REQUESTS_TIMEOUT)
 
                 if response and response.ok:
                     json = response.json()
@@ -56,14 +53,12 @@ class BitrixWorker:
                 error = 'Sending Bitrix api request %s' % e
                 logging.error(error)
 
-        if notify_user:
-            self.TgWorker.edit_user_wm(user, {'text': TextSnippets.ERROR_BITRIX_REQUEST,
-                                              'reply_markup': TO_DEALS_BUTTON_OBJ})
-        raise Exception()
+        raise Exception('Bitrix request error')
 
-    def get_deals_list(self, user):
+    @staticmethod
+    def get_deals_list(user):
         try:
-            courier_field = self._send_request(user, 'crm.deal.userfield.get', {'id': COURIER_FIELD_ID})
+            courier_field = BitrixWorker._send_request(user, 'crm.deal.userfield.get', {'id': COURIER_FIELD_ID})
             couriers = courier_field['result']['LIST']
             target_courier_id = None
             ethalon_pn = user.get_phone_numer().replace('+', '')[1:]
@@ -82,20 +77,25 @@ class BitrixWorker:
             if target_courier_id is None:
                 return {}
 
-            self.get_deals_params['filter'][DEAL_COURIER_FIELD_ALIAS] = target_courier_id
+            BitrixWorker.get_deals_params['filter'][DEAL_COURIER_FIELD_ALIAS] = target_courier_id
 
             today = date.today().isoformat()
-            self.get_deals_params['filter'][DEAL_DATE_ALIAS] = today
+            BitrixWorker.get_deals_params['filter'][DEAL_DATE_ALIAS] = today
 
-            deals = self._send_request(user, 'crm.deal.list', self.get_deals_params)
+            if user.get_deals_category() == DealsCategory.DEALS_IN_DELIVERY:
+                BitrixWorker.get_deals_params['filter'][DEAL_STAGE_ALIAS] = [DEAL_OPEN_STATUS_ID]
+            else:
+                BitrixWorker.get_deals_params['filter'][DEAL_STAGE_ALIAS] = DEAL_WAITING_STATUS_LIST
+
+            deals = BitrixWorker._send_request(user, 'crm.deal.list', BitrixWorker.get_deals_params)
 
             more_deals = 'next' in deals
 
             # getting next deal pages, if any
             while more_deals:
-                get_next_deals_params = self.get_deals_params.copy()
+                get_next_deals_params = BitrixWorker.get_deals_params.copy()
                 get_next_deals_params['start'] = deals['next']
-                next_deals = self._send_request(user, 'crm.deal.list', get_next_deals_params)
+                next_deals = BitrixWorker._send_request(user, 'crm.deal.list', get_next_deals_params)
                 deals['result'].extend(next_deals['result'])
                 more_deals = 'next' in next_deals
 
@@ -103,26 +103,25 @@ class BitrixWorker:
 
         except Exception as e:
             logging.error('Getting deals %s', e)
-            self.TgWorker.edit_user_wm(user, {'text': TextSnippets.ERROR_GETTING_DEALS,
-                                              'reply_markup': TO_MAIN_MENU_BUTTON_OBJ})
             return None
 
-    def change_deal_stage(self, user, deal_id, deal_new_stage):
+    @staticmethod
+    def change_deal_stage(user, deal_id, deal_new_stage):
         try:
-            return self._send_request(user, 'crm.deal.update',
-                                      {'id': deal_id, 'fields': {DEAL_STAGE_ALIAS: deal_new_stage}})
+            return BitrixWorker._send_request(user, 'crm.deal.update',
+                                              {'id': deal_id, 'fields': {DEAL_STAGE_ALIAS: deal_new_stage}})
         except Exception as e:
-            self.TgWorker.edit_user_wm(user, {'text': TextSnippets.ERROR_HANDLING_DEAL_ACTION,
-                                              'reply_markup': TO_DEALS_BUTTON_OBJ})
+            logging.error('Changing deal stage %s', e)
             return None
 
-    def get_contact_phone(self, user, contact_id):
+    @staticmethod
+    def get_contact_phone(user, contact_id):
         if not contact_id:
             return TextSnippets.FIELD_IS_EMPTY_PLACEHOLDER
 
         try:
-            res = self._send_request(user, 'crm.contact.get',
-                                     {'id': contact_id}, notify_user=False)
+            res = BitrixWorker._send_request(user, 'crm.contact.get',
+                                             {'id': contact_id}, notify_user=False)
 
             if 'result' in res:
                 data = res['result']
@@ -135,13 +134,14 @@ class BitrixWorker:
             return TextSnippets.FIELD_IS_EMPTY_PLACEHOLDER
 
     # name + last_name
-    def get_user_name(self, user, bitrix_user_id):
+    @staticmethod
+    def get_user_name(user, bitrix_user_id):
         if not bitrix_user_id:
             return TextSnippets.FIELD_IS_EMPTY_PLACEHOLDER
 
         try:
-            res = self._send_request(user, 'user.get',
-                                     {'id': bitrix_user_id}, notify_user=False)
+            res = BitrixWorker._send_request(user, 'user.get',
+                                             {'id': bitrix_user_id}, notify_user=False)
 
             if 'result' in res:
                 data = res['result'][0]
