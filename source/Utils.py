@@ -1,5 +1,5 @@
 import re
-from . import Commands, BitrixFieldMappings, TextSnippets
+from . import Commands, BitrixFieldMappings, TextSnippets, BitrixFieldsAliases, creds
 
 MD_ESCAPE_PATTERN = re.compile('([*_`])')
 DEAL_CLOSE_COMMAND_PATTERN = re.compile(Commands.DEAL_CLOSE_PREFIX + TextSnippets.DEAL_ACTION_DELIM + '\\d+')
@@ -85,6 +85,12 @@ def prepare_deal_date(obj, datekey):
     return val
 
 
+def prepare_photos_ids(obj, photoskey):
+    val = get_field(obj, photoskey)
+    if not val:
+        return []
+
+    return val
 
 def is_deal_close_action(command):
     return DEAL_CLOSE_COMMAND_PATTERN.match(command)

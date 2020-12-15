@@ -23,9 +23,11 @@ class Deal:
     # name + last_name combined
     _responsible_name = None
 
+    _photos_urls = []
+
     def __init__(self, deal_id, order, date, time, comment, order_comment, delivery_comment, incognito,
                  customer_phone, address, address_res_link, location, deal_sum, close_command, view_command,
-                 flat, recipient_phone, recipient_name, recipient_surname, responsible_name):
+                 flat, recipient_phone, recipient_name, recipient_surname, responsible_name, photos_urls):
         self._id = deal_id
         self._order = order
         self._date = date
@@ -46,4 +48,6 @@ class Deal:
         self._recipient_name = recipient_name
         self._recipient_surname = recipient_surname
         self._responsible_name = responsible_name
+        self._photos_urls = photos_urls
+
 

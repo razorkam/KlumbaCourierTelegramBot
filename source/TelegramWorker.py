@@ -100,6 +100,62 @@ class TgWorker:
         return TgWorker.send_request('deleteMessage', params, 'Message deleting')
 
     @staticmethod
+    def delete_user_dpms(user):
+        for dpm_id in user.get_dpm_ids():
+            res = TgWorker.delete_message(user.get_chat_id(), dpm_id)
+            if not res:
+                return False
+
+        return True
+
+    @staticmethod
+    def generate_deal_view(user, deal, view_object):
+        TgWorker.delete_message(user.get_chat_id(), user.get_wm_id())
+
+        dpm_ids = []
+
+        if len(deal._photos_urls) == 1:
+            photo_obj = {
+                'chat_id': user.get_chat_id(),
+                'photo': deal._photos_urls[0]
+            }
+
+            photo_sending_res = TgWorker.send_request('sendPhoto', photo_obj)
+            try:
+                dpm_ids.append(photo_sending_res['result']['message_id'])
+            except Exception as e:
+                logging.error('Error parsing deal photos message ids: %e', e)
+                return False
+
+        elif len(deal._photos_urls) > 1:
+            photo_obj = {
+                'chat_id': user.get_chat_id(),
+                'media': []
+            }
+
+            for ph_url in deal._photos_urls:
+                photo_obj['media'].append({'type': 'photo', 'media': ph_url})
+
+            photo_sending_res = TgWorker.send_request('sendMediaGroup', photo_obj)
+
+            try:
+                for pi in photo_sending_res['result']:
+                    dpm_ids.append(pi['message_id'])
+            except Exception as e:
+                logging.error('Error parsing deal photos message ids: %e', e)
+                return False
+
+        if dpm_ids:
+            user.set_dpm_ids(dpm_ids)
+
+        res = TgWorker.send_message(user.get_chat_id(), view_object)
+        if not res or ('result' not in res) or ('message_id' not in res['result']):
+            return False
+
+        user.set_wm_id(res['result']['message_id'])
+        return True
+
+    @staticmethod
     def answer_cbq(cbq_id, cbq_text=None, cbq_alert=False):
         cbq_object = {'callback_query_id': cbq_id, 'show_alert': cbq_alert}
         if cbq_text is not None:

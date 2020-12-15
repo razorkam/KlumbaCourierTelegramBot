@@ -22,7 +22,7 @@ class BitrixWorker:
                                    DEAL_RECIPIENT_SURNAME_ALIAS, DEAL_RECIPIENT_PHONE_ALIAS,
                                    DEAL_ADDRESS_ALIAS, DEAL_SUM_ALIAS, DEAL_INCOGNITO_ALIAS, DEAL_FLAT_ALIAS,
                                    DEAL_CONTACT_ID_ALIAS, DEAL_RESPONSIBLE_ID_ALIAS, DEAL_ORDER_COMMENT_ALIAS,
-                                   DEAL_DELIVERY_COMMENT_ALIAS],
+                                   DEAL_DELIVERY_COMMENT_ALIAS, DEAL_PHOTO_IDS_ALIAS],
                         'order': {DEAL_TIME_ALIAS: 'ASC'}}
 
     @staticmethod

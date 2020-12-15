@@ -47,13 +47,20 @@ class TelegramCommandsHandler:
         view_obj = {'reply_markup': TO_DEALS_BUTTON_OBJ,
                     'text': view_text}
 
-        source.TelegramWorker.TgWorker.edit_user_wm(user, view_obj)
+        gen_result = source.TelegramWorker.TgWorker.generate_deal_view(user, deal, view_obj)
+
+        if not gen_result:
+            source.TelegramWorker.TgWorker.delete_user_dpms(user)
+            source.TelegramWorker.TgWorker.edit_user_wm(user,
+                                                        {'text': TextSnippets.DEAL_VIEW_GENERATION_ERROR,
+                                                         'reply_markup': TO_DEALS_BUTTON_OBJ})
 
     @staticmethod
     def handle_deal_closing_dialog(user, deal_id):
         dialog_keyboard = copy.deepcopy(CLOSE_DEAL_DIALOG_BUTTON_OBJ)
         dialog_keyboard['inline_keyboard'][0][0]['callback_data'] += CBQ_DELIM + deal_id
 
+        source.TelegramWorker.TgWorker.delete_user_dpms(user)
         source.TelegramWorker.TgWorker.edit_user_wm(user,
                               {'text': TextSnippets.DEAL_CLOSING_DIALOG_TEXT.format(deal_id),
                                'reply_markup': dialog_keyboard})
@@ -97,6 +104,8 @@ class TelegramCommandsHandler:
         if new_deals_category:
             user.set_deals_category(new_deals_category)
 
+        source.TelegramWorker.TgWorker.delete_user_dpms(user)
+
         deals = BW.BitrixWorker.get_deals_list(user)
 
         if deals is None:
@@ -135,24 +144,30 @@ class TelegramCommandsHandler:
         chat_id = message['chat']['id']
         user = source.TelegramWorker.TgWorker.USERS.get_user(user_id)
 
-        if 'text' not in message:
+        try:
+            if 'text' not in message:
+                source.TelegramWorker.TgWorker.delete_message(chat_id, message['message_id'])
+                return
+
+            command = message['text']
+
+            if command == Commands.START:
+                TelegramCommandsHandler.get_deals_list(user)
+            elif Utils.is_deal_close_action(command):
+                deal_id = command.split(TextSnippets.DEAL_ACTION_DELIM)[1]
+                TelegramCommandsHandler.handle_deal_closing_dialog(user, deal_id)
+            elif Utils.is_deal_view_action(command):
+                deal_id = command.split(TextSnippets.DEAL_ACTION_DELIM)[1]
+                TelegramCommandsHandler.handle_deal_view_action(user, deal_id)
+            else:
+                pass
+
             source.TelegramWorker.TgWorker.delete_message(chat_id, message['message_id'])
-            return
-
-        command = message['text']
-
-        if command == Commands.START:
-            TelegramCommandsHandler.get_deals_list(user)
-        elif Utils.is_deal_close_action(command):
-            deal_id = command.split(TextSnippets.DEAL_ACTION_DELIM)[1]
-            TelegramCommandsHandler.handle_deal_closing_dialog(user, deal_id)
-        elif Utils.is_deal_view_action(command):
-            deal_id = command.split(TextSnippets.DEAL_ACTION_DELIM)[1]
-            TelegramCommandsHandler.handle_deal_view_action(user, deal_id)
-        else:
-            pass
-
-        source.TelegramWorker.TgWorker.delete_message(chat_id, message['message_id'])
+        except Exception as e:
+            source.TelegramWorker.TgWorker.edit_user_wm(user,
+                                                        {'text': TextSnippets.ERROR_SYSTEM_EXCEPTION,
+                                                         'reply_markup': TO_DEALS_BUTTON_OBJ})
+            raise e
 
     @staticmethod
     def _get_deal_representation(user, deal):
@@ -225,10 +240,12 @@ class TelegramCommandsHandler:
             responsible_id = Utils.get_field(d, DEAL_RESPONSIBLE_ID_ALIAS)
             responsible_name = BW.BitrixWorker.get_user_name(user, responsible_id)
 
+            photos_urls = Utils.prepare_photos_ids(d, DEAL_PHOTO_IDS_ALIAS)
+
             deal_obj = Deal(deal_id, order, date, time, comment, order_comment, delivery_comment, incognito,
                             customer_phone, address, address_res_link, location, deal_sum, deal_close_command,
                             deal_view_command, flat, recipient_phone, recipient_name, recipient_surname,
-                            responsible_name)
+                            responsible_name, photos_urls)
 
             deals_lst.append(deal_obj)
 
@@ -339,19 +356,27 @@ class TelegramCommandsHandler:
         user_id = cbq['from']['id']
         user = source.TelegramWorker.TgWorker.USERS.get_user(user_id)
 
-        if CBQ_DELIM in cb_command:
-            splitted = cbq['data'].split(CBQ_DELIM)
-            cb_command = splitted[0]
-            cb_data = splitted[1]
+        try:
+            if CBQ_DELIM in cb_command:
+                splitted = cbq['data'].split(CBQ_DELIM)
+                cb_command = splitted[0]
+                cb_data = splitted[1]
 
-        if cb_command == REFRESH_DEALS_CALLBACK_PREFIX:
-            TelegramCommandsHandler.handle_refresh_deals_cb(cbq, user, cb_data)
-        elif cb_command == TO_DEALS_CALLBACK_DATA:
-            TelegramCommandsHandler.handle_to_deals_cb(cbq, user)
-        elif cb_command == CLOSE_DEAL_CALLBACK_PREFIX:
-            TelegramCommandsHandler.handle_close_deal_cb(cbq, user, cb_data)
-        elif cb_command == DEALS_CALLBACK_PREFIX:
-            TelegramCommandsHandler.handle_deals_pages_cb(cbq, user, cb_data)
-        else:
-            source.TelegramWorker.TgWorker.answer_cbq(cbq['id'], TextSnippets.CBQ_UNKNOW_COMMAND, True)
-            raise Exception('Handling cb query: unknown cb command %s' % cb_command)
+            if cb_command == REFRESH_DEALS_CALLBACK_PREFIX:
+                TelegramCommandsHandler.handle_refresh_deals_cb(cbq, user, cb_data)
+            elif cb_command == TO_DEALS_CALLBACK_DATA:
+                TelegramCommandsHandler.handle_to_deals_cb(cbq, user)
+            elif cb_command == CLOSE_DEAL_CALLBACK_PREFIX:
+                TelegramCommandsHandler.handle_close_deal_cb(cbq, user, cb_data)
+            elif cb_command == DEALS_CALLBACK_PREFIX:
+                TelegramCommandsHandler.handle_deals_pages_cb(cbq, user, cb_data)
+            else:
+                source.TelegramWorker.TgWorker.answer_cbq(cbq['id'], TextSnippets.CBQ_UNKNOW_COMMAND, True)
+                raise Exception('Handling cb query: unknown cb command %s' % cb_command)
+
+        except Exception as e:
+            source.TelegramWorker.TgWorker.edit_user_wm(user,
+                                                        {'text': TextSnippets.ERROR_SYSTEM_EXCEPTION,
+                                                         'reply_markup': TO_DEALS_BUTTON_OBJ})
+            raise e
+

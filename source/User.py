@@ -20,15 +20,23 @@ class User:
         self.cur_page_index = 0
         self.preauthorize_msg_list = []
         self._working_message_id = None
+        self._deal_photos_message_ids = []
         self._deals = None
         self._deals_category = DealsCategory.DEALS_IN_DELIVERY
 
     # pickle serializing fields
     def __getstate__(self):
-        return self._chat_id, self._state, self._phone_number, self._working_message_id
+        return self._chat_id, self._state, self._phone_number, self._working_message_id, self._deal_photos_message_ids
 
     def __setstate__(self, dump):
-        self._chat_id, self._state, self._phone_number, self._working_message_id = dump
+        # version with _deal_photos_message_ids
+        if len(dump) == 5:
+            self._chat_id, self._state, self._phone_number, self._working_message_id, self._deal_photos_message_ids \
+                = dump
+        else:
+            self._chat_id, self._state, self._phone_number, self._working_message_id = dump
+            self._deal_photos_message_ids = []
+
         self.deal_page_borders = []
         self.preauthorize_msg_list = []
         self._deals = None
@@ -101,9 +109,14 @@ class User:
     def set_wm_id(self, wm_id):
         self._working_message_id = wm_id
 
+    def get_dpm_ids(self):
+        return self._deal_photos_message_ids
+
+    def set_dpm_ids(self, dpm_ids):
+        self._deal_photos_message_ids = dpm_ids
+
     def get_deals_category(self):
         return self._deals_category
 
     def set_deals_category(self, dc):
         self._deals_category = dc
-
