@@ -32,7 +32,7 @@ class TelegramCommandsHandler:
                                                                       deal._recipient_name, deal._recipient_surname,
                                                                       deal._recipient_phone, deal._recipient_phone,
                                                                       deal._address, address_res_link, deal._deal_sum,
-                                                                      deal._responsible_name)
+                                                                      deal._responsible_name, deal._deal_type)
         else:
             view_text = TextSnippets.DEAL_TEMPLATE_DELIVERY.format(deal._id, deal._order, deal._date, deal._time,
                                                                       deal._comment,
@@ -41,7 +41,7 @@ class TelegramCommandsHandler:
                                                                       deal._recipient_name, deal._recipient_surname,
                                                                       deal._recipient_phone, deal._recipient_phone,
                                                                       deal._address, address_res_link, deal._deal_sum,
-                                                                      deal._responsible_name,
+                                                                      deal._responsible_name, deal._deal_type,
                                                                       deal._close_command)
 
         view_obj = {'reply_markup': TO_DEALS_BUTTON_OBJ,
@@ -182,12 +182,14 @@ class TelegramCommandsHandler:
                                                                                       deal._recipient_phone,
                                                                                       deal._deal_sum,
                                                                                       deal._responsible_name,
+                                                                                      deal._deal_type,
                                                                                       deal._close_command)
                                    + '\n\n' + TextSnippets.DEAL_DELIMETER + '\n\n')
         else:
             deal_representation = (TextSnippets.DEAL_WAITING_PREVIEW_TEMPLATE.format(deal._view_command,
                                                                                      deal._date, deal._time,
-                                                                                     deal._responsible_name)
+                                                                                     deal._responsible_name,
+                                                                                     deal._deal_type)
                                    + '\n\n' + TextSnippets.DEAL_DELIMETER + '\n\n')
 
         return deal_representation
@@ -240,12 +242,15 @@ class TelegramCommandsHandler:
             responsible_id = Utils.get_field(d, DEAL_RESPONSIBLE_ID_ALIAS)
             responsible_name = BW.BitrixWorker.get_user_name(user, responsible_id)
 
-            photos_urls = Utils.prepare_photos_ids(d, DEAL_PHOTO_IDS_ALIAS)
+            photos_urls = Utils.prepare_photos_urls(d, DEAL_CLIENT_HASH_ALIAS)
+
+            deal_type_id = Utils.get_field(d, DEAL_TYPE_ID_ALIAS)
+            deal_type_value = BW.BitrixWorker.get_deal_type(user, deal_type_id)
 
             deal_obj = Deal(deal_id, order, date, time, comment, order_comment, delivery_comment, incognito,
                             customer_phone, address, address_res_link, location, deal_sum, deal_close_command,
                             deal_view_command, flat, recipient_phone, recipient_name, recipient_surname,
-                            responsible_name, photos_urls)
+                            responsible_name, photos_urls, deal_type_value)
 
             deals_lst.append(deal_obj)
 

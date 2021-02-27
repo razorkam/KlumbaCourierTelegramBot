@@ -1,4 +1,6 @@
 import re
+import requests
+import logging
 from . import Commands, BitrixFieldMappings, TextSnippets, BitrixFieldsAliases, creds
 
 MD_ESCAPE_PATTERN = re.compile('([*_`])')
@@ -8,6 +10,11 @@ BITRIX_ADDRESS_PATTERN = re.compile('(.+)\\|(\\d+\\.\\d+;\\d+\\.\\d+)')
 BITRIX_DATE_PATTERN = re.compile('(\\d{4})-(\\d{2})-(\\d{2}).*')
 ADDRESS_LINK_RESOLVING_SPECIAL_CHARS_PATTERN = re.compile('["]')
 PHONE_VALID_SYMBOLS_LIST_PATTERN = re.compile('[^\\d,+]')
+
+# utils network requests
+SESSION = requests.session()
+REQUESTS_TIMEOUT = 10
+REQUESTS_MAX_ATTEMPTS = 3
 
 
 def get_field(obj, key):
@@ -85,12 +92,28 @@ def prepare_deal_date(obj, datekey):
     return val
 
 
-def prepare_photos_ids(obj, photoskey):
-    val = get_field(obj, photoskey)
+def send_get_request_JSON(u):
+    for a in range(REQUESTS_MAX_ATTEMPTS):
+        try:
+            response = SESSION.get(url=u).json()
+            return response
+
+        except Exception as e:
+            logging.error('Sending Utils get JSON request: %s', e)
+            return {}
+
+
+def prepare_photos_urls(obj, client_hash):
+    val = get_field(obj, client_hash)
     if not val:
         return []
 
-    return val
+    try:
+        photos_urls = send_get_request_JSON(creds.CLIENT_ORDERS_STORAGE_URL + '/' + val)['photos']
+        return [creds.CLIENT_ORDERS_STORAGE_URL + '/' + url for url in photos_urls]
+    except Exception as e:
+        logging.error('Error getting photos URLs from client storage: %s', e)
+        return []
 
 def is_deal_close_action(command):
     return DEAL_CLOSE_COMMAND_PATTERN.match(command)

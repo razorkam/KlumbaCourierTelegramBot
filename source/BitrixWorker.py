@@ -22,7 +22,7 @@ class BitrixWorker:
                                    DEAL_RECIPIENT_SURNAME_ALIAS, DEAL_RECIPIENT_PHONE_ALIAS,
                                    DEAL_ADDRESS_ALIAS, DEAL_SUM_ALIAS, DEAL_INCOGNITO_ALIAS, DEAL_FLAT_ALIAS,
                                    DEAL_CONTACT_ID_ALIAS, DEAL_RESPONSIBLE_ID_ALIAS, DEAL_ORDER_COMMENT_ALIAS,
-                                   DEAL_DELIVERY_COMMENT_ALIAS, DEAL_PHOTO_IDS_ALIAS],
+                                   DEAL_DELIVERY_COMMENT_ALIAS, DEAL_CLIENT_HASH_ALIAS, DEAL_TYPE_ID_ALIAS],
                         'order': {DEAL_TIME_ALIAS: 'ASC'}}
 
     @staticmethod
@@ -147,6 +147,24 @@ class BitrixWorker:
                 data = res['result'][0]
                 return Utils.prepare_external_field(data, USER_NAME_ALIAS) + ' ' + \
                        Utils.prepare_external_field(data, USER_LAST_NAME_ALIAS)
+
+            return TextSnippets.FIELD_IS_EMPTY_PLACEHOLDER
+
+        except Exception as e:
+            return TextSnippets.FIELD_IS_EMPTY_PLACEHOLDER
+
+    @staticmethod
+    def get_deal_type(user, deal_type_id):
+        if not deal_type_id:
+            return TextSnippets.FIELD_IS_EMPTY_PLACEHOLDER
+
+        try:
+            type_field = BitrixWorker._send_request(user, 'crm.deal.userfield.get', {'id': DEAL_TYPE_FIELD_ID})
+            types = type_field['result']['LIST']
+
+            for t in types:
+                if t['ID'] == deal_type_id:
+                    return Utils.prepare_external_field(t, 'VALUE')
 
             return TextSnippets.FIELD_IS_EMPTY_PLACEHOLDER
 
