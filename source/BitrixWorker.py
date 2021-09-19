@@ -106,10 +106,12 @@ class BitrixWorker:
             return None
 
     @staticmethod
-    def change_deal_stage(user, deal_id, deal_new_stage):
+    def change_deal_stage(user, deal_id, deal_new_stage, deal_is_late, deal_is_late_reason=''):
         try:
             return BitrixWorker._send_request(user, 'crm.deal.update',
-                                              {'id': deal_id, 'fields': {DEAL_STAGE_ALIAS: deal_new_stage}})
+                                              {'id': deal_id, 'fields': {DEAL_STAGE_ALIAS: deal_new_stage,
+                                                                         DEAL_IS_LATE_ALIAS: deal_is_late,
+                                                                         DEAL_IS_LATE_REASON_ALIAS: deal_is_late_reason}})
         except Exception as e:
             logging.error('Changing deal stage %s', e)
             return None

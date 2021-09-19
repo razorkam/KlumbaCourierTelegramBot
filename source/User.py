@@ -4,6 +4,7 @@ from enum import Enum
 class UserState(Enum):
     PHONE_NUMBER_REQUESTED = 1
     AUTHORIZED = 2
+    WRITING_LATE_REASON = 3
 
 
 class DealsCategory(Enum):
@@ -23,6 +24,7 @@ class User:
         self._deal_photos_message_ids = []
         self._deals = None
         self._deals_category = DealsCategory.DEALS_IN_DELIVERY
+        self._closing_deal_id = None
 
     # pickle serializing fields
     def __getstate__(self):
@@ -42,6 +44,7 @@ class User:
         self._deals = None
         self.cur_page_index = 0
         self._deals_category = DealsCategory.DEALS_IN_DELIVERY
+        self._closing_deal_id = None
 
     def get_deal_pages_num(self):
         return len(self.deal_page_borders) - 1
@@ -64,7 +67,7 @@ class User:
         return self._state == UserState.PHONE_NUMBER_REQUESTED
 
     def is_authorized(self):
-        return self._state == UserState.AUTHORIZED
+        return self._state in (UserState.AUTHORIZED, UserState.WRITING_LATE_REASON)
 
     def authorize(self, phone_number):
         self._state = UserState.AUTHORIZED

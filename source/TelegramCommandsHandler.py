@@ -7,6 +7,7 @@ import source.TelegramWorker
 import source.BitrixWorker as BW
 from .User import *
 import copy
+from datetime import datetime
 
 
 class TelegramCommandsHandler:
@@ -89,9 +90,23 @@ class TelegramCommandsHandler:
                                    'reply_markup': TO_DEALS_BUTTON_OBJ})
             return
 
+        # Late reason: temporary hotfix (workaround)
+        deadline_time = deal._time.split('-')[-1].strip()
+        deadline_hour = int(deadline_time.split(':')[0])
+
+        now = datetime.today()
+        deadline_dt = now.replace(hour=deadline_hour, minute=0, second=0)
+
+        if now > deadline_dt:
+            source.TelegramWorker.TgWorker.edit_user_wm(user,
+                                                        {'text': TextSnippets.DEAL_TOO_LATE})
+            user._state = UserState.WRITING_LATE_REASON
+            user._closing_deal_id = deal_id
+            return
+
         new_stage = DEAL_CLOSED_STATUS_ID
 
-        result = BW.BitrixWorker.change_deal_stage(user, deal_id, new_stage)
+        result = BW.BitrixWorker.change_deal_stage(user, deal_id, new_stage, DEAL_IS_LATE_NO)
 
         if result is not None:
             TelegramCommandsHandler.get_deals_list(user)
@@ -115,7 +130,7 @@ class TelegramCommandsHandler:
             return None
 
         if not deals or ('result' not in deals):
-            if user.get_deal_category() == DealsCategory.DEALS_IN_DELIVERY:
+            if user.get_deals_category() == DealsCategory.DEALS_IN_DELIVERY:
                 error_text = TextSnippets.YOU_HAVE_NO_DEALS_IN_DELIVERY
             else:
                 error_text = TextSnippets.YOU_HAVE_NO_DEALS_WAITING
@@ -139,6 +154,20 @@ class TelegramCommandsHandler:
             return source.TelegramWorker.TgWorker.edit_user_wm(user, deals_msg, from_callback=is_callback)
 
     @staticmethod
+    def handle_deal_is_late_reason(user, reason_text):
+        new_stage = DEAL_CLOSED_STATUS_ID
+
+        result = BW.BitrixWorker.change_deal_stage(user, user._closing_deal_id,
+                                                   new_stage, DEAL_IS_LATE_YES, reason_text)
+
+        if result is not None:
+            TelegramCommandsHandler.get_deals_list(user)
+        else:
+            source.TelegramWorker.TgWorker.edit_user_wm(user, {'text': TextSnippets.ERROR_HANDLING_DEAL_ACTION,
+                                                               'reply_markup': TO_DEALS_BUTTON_OBJ})
+
+
+    @staticmethod
     def handle_command(message):
         user_id = message['from']['id']
         chat_id = message['chat']['id']
@@ -159,6 +188,10 @@ class TelegramCommandsHandler:
             elif Utils.is_deal_view_action(command):
                 deal_id = command.split(TextSnippets.DEAL_ACTION_DELIM)[1]
                 TelegramCommandsHandler.handle_deal_view_action(user, deal_id)
+            elif user._state == UserState.WRITING_LATE_REASON:
+                TelegramCommandsHandler.handle_deal_is_late_reason(user, command)
+                user._state = UserState.AUTHORIZED
+                user._closing_deal_id = None
             else:
                 pass
 

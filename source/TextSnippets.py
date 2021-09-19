@@ -116,5 +116,8 @@ DEAL_CLOSING_DIALOG_NO = 'Отмена'
 DEALS_PAGE_NEXT_BUTTON_TEXT = 'Вперед'
 DEALS_PAGE_PREV_BUTTON_TEXT = 'Назад'
 
+DEAL_TOO_LATE = 'Заказ опоздал. Напишите причину опоздания:'
+
+
 
 
