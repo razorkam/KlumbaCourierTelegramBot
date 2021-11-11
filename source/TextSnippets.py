@@ -40,7 +40,7 @@ ADDRESS_RESOLUTION_LINK = 'https://maps.yandex.ru/?text='
 
 # deals in delivery
 DEAL_DELIVERY_PREVIEW_TEMPLATE = \
-                '*№ заказа:* {}\n' \
+                '*№ заказа: ПОДРОБНЕЕ ЖМИ --->* {}\n' \
                 '*Время:* {} \n' \
                 '*Комментарий:* {} \n' \
                 '*Комментарий к товару:* {} \n' \
@@ -56,7 +56,7 @@ DEAL_DELIVERY_PREVIEW_TEMPLATE = \
 
 # all deals
 DEAL_WAITING_PREVIEW_TEMPLATE = \
-                '*№ заказа:* {}\n' \
+                '*№ заказа: ПОДРОБНЕЕ ЖМИ --->* {}\n' \
                 '*Дата:* {} \n' \
                 '*Время:* {} \n' \
                 '*Ответственный:* {} \n' \
